@@ -199,20 +199,6 @@ internal class Program
                     },
                     required = new[] { "sessionId" }
                 }
-            },
-            new
-            {
-                name = "split_razor_file",
-                description = "Splits a .razor file into .razor, .razor.cs, and .razor.css.",
-                inputSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        path = new { type = "string", description = "Path to the .razor file" }
-                    },
-                    required = new[] { "path" }
-                }
             }
         ];
     }
@@ -231,7 +217,6 @@ internal class Program
             "start_csharp_session" => ToolHandlers.HandleStartSession(args),
             "update_csharp_session" => ToolHandlers.HandleUpdateSession(args),
             "save_csharp_session" => ToolHandlers.HandleSaveSession(args),
-            "split_razor_file" => ToolHandlers.HandleSplitRazorFile(args),
             _ => throw new Exception($"Unknown tool: {name}")
         };
 
