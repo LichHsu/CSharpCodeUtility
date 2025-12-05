@@ -125,4 +125,10 @@ public static class ToolHandlers
         CsharpSessionManager.SaveSession(sessionId);
         return $"Session {sessionId} saved to disk.";
     }
+
+    public static string HandleSplitRazorFile(JsonElement args)
+    {
+        string path = args.GetProperty("path").GetString()!;
+        return CSharpCodeUtility.Operations.RazorSplitter.SplitFile(path);
+    }
 }
