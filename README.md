@@ -77,10 +77,28 @@ dotnet run
     *   `namespace` (string): 要引入的命名空間 (例如 "System.IO")。
     *   `path` / `sessionId`: 目標。
 
-### 5. 工作階段管理 (Session Management)
+### 5. `fix_namespace_and_usings`
+自動修正命名空間並添加必要的 Usings。
+*   **參數**:
+    *   `directory`: 掃描目錄
+    *   `projectRoot`: 專案根目錄 (用於判斷命名空間)
+    *   `rootNamespace`: 專案根命名空間
+    *   `extraUsings`: 額外需要引入的命名空間列表
+
+### 6. 工作階段管理 (Session Management)
 *   `start_csharp_session`: 開始一個新的編輯工作階段 (可載入檔案)。
 *   `update_csharp_session`: 直接更新工作階段內容。
 *   `save_csharp_session`: 將工作階段內容寫回磁碟。
+
+## 💻 CLI 命令列模式 (CLI Mode)
+
+本工具支援直接透過命令列執行批次重構：
+
+### 修正命名空間
+```bash
+dotnet run -- fix-namespace --path "D:\Projects\MyProject" --root "MyProject"
+```
+
 
 ## 使用範例 (JSON-RPC)
 
