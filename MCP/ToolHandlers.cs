@@ -125,4 +125,36 @@ public static class ToolHandlers
         CsharpSessionManager.SaveSession(sessionId);
         return $"Session {sessionId} saved to disk.";
     }
+
+    public static string HandleFixNamespaceAndUsings(JsonElement args)
+    {
+        string directory = args.GetProperty("directory").GetString()!;
+        string projectRoot = args.GetProperty("projectRoot").GetString()!;
+        string rootNamespace = args.GetProperty("rootNamespace").GetString()!;
+        
+        List<string>? extraUsings = null;
+        if (args.TryGetProperty("extraUsings", out var usings))
+        {
+            extraUsings = JsonSerializer.Deserialize<List<string>>(usings.GetRawText());
+        }
+
+        if (!Directory.Exists(directory)) throw new DirectoryNotFoundException($"Directory not found: {directory}");
+
+        var files = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories);
+        int fixedCount = 0;
+
+        foreach (var file in files)
+        {
+            string code = File.ReadAllText(file);
+            string newCode = CsharpRefactorer.FixNamespaceAndUsings(code, file, projectRoot, rootNamespace, extraUsings);
+            
+            if (code != newCode)
+            {
+                File.WriteAllText(file, newCode);
+                fixedCount++;
+            }
+        }
+
+        return $"Fixed namespaces and usings in {fixedCount} files.";
+    }
 }

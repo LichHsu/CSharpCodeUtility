@@ -20,10 +20,39 @@ internal class Program
         Console.OutputEncoding = new UTF8Encoding(false);
         Console.InputEncoding = new UTF8Encoding(false);
 
-        if (args.Length > 0 && args[0] == "--test")
+        if (args.Length > 0)
         {
-            CSharpCodeUtility.Testing.TestRunner.RunAllTests();
-            return;
+            if (args[0] == "--test")
+            {
+                CSharpCodeUtility.Testing.TestRunner.RunAllTests();
+                return;
+            }
+
+            if (args[0] == "fix-namespace")
+            {
+                // Usage: fix-namespace <directory> <projectRoot> <rootNamespace> [extraUsings...]
+                string directory = args[1];
+                string projectRoot = args[2];
+                string rootNamespace = args[3];
+                List<string>? extraUsings = args.Length > 4 ? args.Skip(4).ToList() : null;
+
+                var files = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories);
+                int fixedCount = 0;
+
+                foreach (var file in files)
+                {
+                    string code = File.ReadAllText(file);
+                    string newCode = CSharpCodeUtility.Core.CsharpRefactorer.FixNamespaceAndUsings(code, file, projectRoot, rootNamespace, extraUsings);
+                    
+                    if (code != newCode)
+                    {
+                        File.WriteAllText(file, newCode);
+                        fixedCount++;
+                    }
+                }
+                Console.WriteLine($"Fixed namespaces and usings in {fixedCount} files.");
+                return;
+            }
         }
 
         Log("=== C# Server Started ===");
@@ -199,6 +228,23 @@ internal class Program
                     },
                     required = new[] { "sessionId" }
                 }
+            },
+            new
+            {
+                name = "fix_namespace_and_usings",
+                description = "Fixes namespace mismatches and adds missing usings.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        directory = new { type = "string", description = "Directory to scan" },
+                        projectRoot = new { type = "string", description = "Project root directory" },
+                        rootNamespace = new { type = "string", description = "Root namespace of the project" },
+                        extraUsings = new { type = "array", items = new { type = "string" }, description = "List of extra usings to add" }
+                    },
+                    required = new[] { "directory", "projectRoot", "rootNamespace" }
+                }
             }
         ];
     }
@@ -217,6 +263,7 @@ internal class Program
             "start_csharp_session" => ToolHandlers.HandleStartSession(args),
             "update_csharp_session" => ToolHandlers.HandleUpdateSession(args),
             "save_csharp_session" => ToolHandlers.HandleSaveSession(args),
+            "fix_namespace_and_usings" => ToolHandlers.HandleFixNamespaceAndUsings(args),
             _ => throw new Exception($"Unknown tool: {name}")
         };
 
