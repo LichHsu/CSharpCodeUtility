@@ -1,6 +1,7 @@
 # CSharpCodeUtility
 
 A powerful MCP server for analyzing, inspecting, and editing C# codebases.
+Now supports strongly-typed parameters for enhanced AI interaction.
 
 ## Tools
 
@@ -11,8 +12,8 @@ Analyzes C# project structure and references.
     *   `analysisType` (string):
         *   `Structure`: Parses file structure (Classes, Methods).
         *   `References`: Analyzes Project-to-Project references.
-        *   `SymbolDefinition`: Finds where a symbol is defined (`find_symbol`).
-        *   `Usages`: (**NEW**) Finds all references/usages of a symbol in the project (`find_references`).
+        *   `SymbolDefinition`: Finds where a symbol is defined.
+        *   `Usages`: Finds all references of a symbol.
     *   `query` (string, optional): The symbol name or search term.
 
 ### 2. `inspect_csharp`
@@ -26,12 +27,13 @@ Inspects specific code elements.
 Modifies C# code.
 *   **Parameters**:
     *   `path` (string): Target file or directory.
-    *   `operation` (string):
-        *   `UpdateMethod`: Replaces the body of a method.
-        *   `AddUsing`: Adds a using directive if missing.
-        *   `FixNamespace`: Batch fixes namespaces to match folder structure.
-    *   `content` (string): The primary data (MethodName, Namespace, etc.).
-    *   `optionsJson` (json string): `{ "newBody": "...", "projectRoot": "..." }`.
+    *   `operation` (string): `UpdateMethod`, `AddUsing`, `FixNamespace`.
+    *   `content` (string): Primary content (optional depending on use case).
+    *   `options`: (Object)
+        *   `methodName`: Target method name.
+        *   `newBody`: New method body content.
+        *   `projectRoot`: For Namespace fixing.
+        *   `rootNamespace`: Expected root namespace.
 
 ## Development
 Run `dotnet build` to compile.
