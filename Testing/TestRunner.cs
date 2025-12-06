@@ -1,5 +1,4 @@
 using CSharpCodeUtility.Core;
-using CSharpCodeUtility.Models;
 
 namespace CSharpCodeUtility.Testing;
 
@@ -44,9 +43,9 @@ namespace TestNamespace
     }
 }";
         var structure = CsharpParser.GetStructure(code);
-        
+
         // Assert(structure.Count == 2, "Should find 2 items (Class + Children flattened or just top level? Parser returns flattened list)");
-        
+
         Assert(structure.Count == 3, $"Expected 3 items, found {structure.Count}");
         Assert(structure[0].Type == "Class", "First item should be Class");
         Assert(structure[0].Name == "TestClass", "Class name should be TestClass");
@@ -69,7 +68,7 @@ public class TestClass
         return;";
 
         string updatedCode = CsharpModifier.UpdateMethodBody(code, "Method1", newBody);
-        
+
         Assert(updatedCode.Contains("int b = 2;"), "Updated code should contain new body");
         Assert(!updatedCode.Contains("int a = 1;"), "Updated code should not contain old body");
     }
@@ -82,12 +81,12 @@ using System;
 public class TestClass {}";
 
         string updatedCode = CsharpModifier.AddUsing(code, "System.IO");
-        
+
         if (!updatedCode.Contains("using System.IO;"))
         {
             Console.WriteLine($"DEBUG: Updated Code:\n{updatedCode}");
         }
-        
+
         Assert(updatedCode.Contains("using System.IO;"), "Updated code should contain new using");
         Assert(updatedCode.Contains("using System;"), "Updated code should keep existing using");
     }
@@ -96,7 +95,7 @@ public class TestClass {}";
     {
         var session = CsharpSessionManager.CreateSession();
         string initialCode = "public class Foo {}";
-        
+
         CsharpSessionManager.UpdateSessionContent(session.Id, initialCode);
         Assert(session.Content == initialCode, "Session content should be updated");
         Assert(session.IsDirty, "Session should be dirty");
@@ -104,10 +103,10 @@ public class TestClass {}";
         // Simulate save (mocking file I/O is hard here without abstraction, but we can check logic)
         // We won't test SaveSession to disk here to avoid creating garbage files, 
         // but we can verify the manager holds the state.
-        
+
         var retrievedSession = CsharpSessionManager.GetSession(session.Id);
         Assert(retrievedSession.Content == initialCode, "Should retrieve correct session");
-        
+
         CsharpSessionManager.CloseSession(session.Id);
         try
         {

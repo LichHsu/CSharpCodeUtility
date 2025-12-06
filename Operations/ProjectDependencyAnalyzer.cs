@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace CSharpCodeUtility.Operations;
@@ -52,10 +51,10 @@ public static class ProjectDependencyAnalyzer
                     .Where(v => v != null)
                     .Select(v => Path.GetFileNameWithoutExtension(v!)) // 正規化為專案名稱
                     .ToList();
-                
+
                 node.Dependencies.AddRange(refs);
             }
-            catch 
+            catch
             {
                 // 忽略解析錯誤 (例如無效 XML)
             }

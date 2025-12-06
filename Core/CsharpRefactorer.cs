@@ -10,19 +10,19 @@ public static class CsharpRefactorer
     {
         // 1. Calculate Expected Namespace
         string relativePath = Path.GetRelativePath(projectRoot, Path.GetDirectoryName(filePath)!);
-        
+
         // Handle case where file is in project root
         string namespaceSuffix = relativePath == "." ? "" : relativePath.Replace(Path.DirectorySeparatorChar, '.');
-        
+
         string expectedNamespace = string.IsNullOrEmpty(namespaceSuffix)
-            ? rootNamespace 
+            ? rootNamespace
             : $"{rootNamespace}.{namespaceSuffix}";
 
         // 2. Update Namespace
         var tree = CSharpSyntaxTree.ParseText(code);
         var root = tree.GetRoot();
         bool modified = false;
-        
+
         // Handle Block Namespace
         var namespaceDecl = root.DescendantNodes().OfType<NamespaceDeclarationSyntax>().FirstOrDefault();
         if (namespaceDecl != null)

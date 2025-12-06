@@ -1,7 +1,7 @@
+using CSharpCodeUtility.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using CSharpCodeUtility.Models;
 
 namespace CSharpCodeUtility.Core;
 
@@ -65,7 +65,7 @@ public static class CsharpParser
     {
         var tree = CSharpSyntaxTree.ParseText(code);
         var root = tree.GetRoot();
-        
+
         var method = root.DescendantNodes()
             .OfType<MethodDeclarationSyntax>()
             .FirstOrDefault(m => m.Identifier.Text == methodName);

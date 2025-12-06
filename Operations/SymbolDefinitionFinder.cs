@@ -23,15 +23,15 @@ public static class SymbolDefinitionFinder
         if (!Directory.Exists(rootPath)) return results;
 
         var files = Directory.GetFiles(rootPath, "*.cs", SearchOption.AllDirectories);
-        
+
         // 最佳化 Regex：匹配 "public class MySymbol", "void MySymbol(", "MySymbol ="
         // 排除 "new MySymbol", "MySymbol." 等使用處
-        
+
         // Strategy:
         // 1. Class/Interface: (class|interface|record|struct)\s+SymbolName\b
         // 2. Method: \s+SymbolName\s*\(
         // 3. Property: \s+SymbolName\s*\{
-        
+
         // 這裡使用三個特定模式來提高精確度
         var classPattern = new Regex($@"\b(class|interface|record|struct|enum)\s+{Regex.Escape(symbolName)}\b", RegexOptions.Compiled);
         var methodPattern = new Regex($@"\b{Regex.Escape(symbolName)}\s*\(", RegexOptions.Compiled); // func name(
@@ -40,7 +40,7 @@ public static class SymbolDefinitionFinder
         foreach (var file in files)
         {
             // 忽略 bin/obj 目錄
-            if (file.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar) || 
+            if (file.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar) ||
                 file.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)) continue;
 
             var lines = File.ReadLines(file).ToArray();
@@ -51,7 +51,7 @@ public static class SymbolDefinitionFinder
 
                 string type = null;
                 if (classPattern.IsMatch(line)) type = "class/type";
-                else if (methodPattern.IsMatch(line) && !line.StartsWith("new ")) type = "method"; 
+                else if (methodPattern.IsMatch(line) && !line.StartsWith("new ")) type = "method";
                 // 排除 "new Foo()" 調用
                 else if (propPattern.IsMatch(line)) type = "property";
 

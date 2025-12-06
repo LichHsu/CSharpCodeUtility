@@ -32,7 +32,7 @@ public static class CsharpModifier
 
         // Replace the old body with the new block
         var newMethod = method.WithBody(newBlock).WithExpressionBody(null).WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.None));
-        
+
         // Format the new node to match standard indentation (basic)
         newMethod = newMethod.NormalizeWhitespace();
 

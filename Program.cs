@@ -1,11 +1,11 @@
-﻿using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using CSharpCodeUtility.Core;
+﻿using CSharpCodeUtility.Core;
 using CSharpCodeUtility.Models;
 using CSharpCodeUtility.Operations;
 using Lichs.MCP.Core;
 using Lichs.MCP.Core.Attributes;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace CSharpCodeUtility;
 
@@ -93,57 +93,57 @@ public class Program
         [McpParameter("選項參數", false)] CSharpEditOptions? options = null)
     {
         options ??= new CSharpEditOptions();
-        
+
         if (operation.Equals("UpdateMethod", StringComparison.OrdinalIgnoreCase))
         {
-             if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
-             
-             // Legacy behavior: content was methodName, newBody was in options?
-             // Let's standardize: content = NewBody? Or content = MethodName? 
-             // To be extremely clear: Use Options where possible.
-             
-             string methodName = options.MethodName ?? content ?? "";
-             string newBody = options.NewBody ?? ""; 
-             
-             // Wait, if content was used as MethodName in previous turn.
-             // Let's stick to safe fallback.
-             
-             if (string.IsNullOrEmpty(methodName)) throw new ArgumentException("MethodName required");
-             if (string.IsNullOrEmpty(newBody)) throw new ArgumentException("NewBody required");
+            if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
 
-             string code = File.ReadAllText(path);
-             string newCode = CsharpModifier.UpdateMethodBody(code, methodName, newBody); 
-             File.WriteAllText(path, newCode);
-             return $"Updated method '{methodName}' in {path}";
+            // Legacy behavior: content was methodName, newBody was in options?
+            // Let's standardize: content = NewBody? Or content = MethodName? 
+            // To be extremely clear: Use Options where possible.
+
+            string methodName = options.MethodName ?? content ?? "";
+            string newBody = options.NewBody ?? "";
+
+            // Wait, if content was used as MethodName in previous turn.
+            // Let's stick to safe fallback.
+
+            if (string.IsNullOrEmpty(methodName)) throw new ArgumentException("MethodName required");
+            if (string.IsNullOrEmpty(newBody)) throw new ArgumentException("NewBody required");
+
+            string code = File.ReadAllText(path);
+            string newCode = CsharpModifier.UpdateMethodBody(code, methodName, newBody);
+            File.WriteAllText(path, newCode);
+            return $"Updated method '{methodName}' in {path}";
         }
         else if (operation.Equals("AddUsing", StringComparison.OrdinalIgnoreCase))
         {
-             if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
-             string code = File.ReadAllText(path);
-             string newCode = CsharpModifier.AddUsing(code, content ?? ""); // content is namespace
-             File.WriteAllText(path, newCode);
-             return $"Added using '{content}' to {path}";
+            if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
+            string code = File.ReadAllText(path);
+            string newCode = CsharpModifier.AddUsing(code, content ?? ""); // content is namespace
+            File.WriteAllText(path, newCode);
+            return $"Added using '{content}' to {path}";
         }
         else if (operation.Equals("FixNamespace", StringComparison.OrdinalIgnoreCase))
         {
-             if (!Directory.Exists(path)) throw new DirectoryNotFoundException("Path must be a directory");
-             
-             string projectRoot = options.ProjectRoot ?? "";
-             string rootNamespace = options.RootNamespace ?? "";
-             
-             var files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
-             int count = 0;
-             foreach (var file in files)
-             {
-                 string code = File.ReadAllText(file);
-                 string newCode = CsharpRefactorer.FixNamespaceAndUsings(code, file, projectRoot, rootNamespace, null);
-                 if (code != newCode)
-                 {
-                     File.WriteAllText(file, newCode);
-                     count++;
-                 }
-             }
-             return $"Fixed namespaces in {count} files.";
+            if (!Directory.Exists(path)) throw new DirectoryNotFoundException("Path must be a directory");
+
+            string projectRoot = options.ProjectRoot ?? "";
+            string rootNamespace = options.RootNamespace ?? "";
+
+            var files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
+            int count = 0;
+            foreach (var file in files)
+            {
+                string code = File.ReadAllText(file);
+                string newCode = CsharpRefactorer.FixNamespaceAndUsings(code, file, projectRoot, rootNamespace, null);
+                if (code != newCode)
+                {
+                    File.WriteAllText(file, newCode);
+                    count++;
+                }
+            }
+            return $"Fixed namespaces in {count} files.";
         }
 
         throw new ArgumentException($"未知的操作類型: {operation}");

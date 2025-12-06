@@ -11,11 +11,11 @@ public static class ReferenceFinder
     public static List<ReferenceResult> FindReferences(string rootPath, string symbolName)
     {
         var results = new List<ReferenceResult>();
-        
+
         if (!Directory.Exists(rootPath)) return results;
 
         var files = Directory.GetFiles(rootPath, "*.cs", SearchOption.AllDirectories);
-        
+
         // Basic pattern: word boundary + symbol name + word boundary
         // avoiding matches where it's part of another word
         var regex = new Regex($@"\b{Regex.Escape(symbolName)}\b", RegexOptions.Compiled);
