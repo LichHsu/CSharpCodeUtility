@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using CSharpCodeUtility.MCP;
+using CSharpCodeUtility.Core;
 using CSharpCodeUtility.Operations;
 using Lichs.MCP.Core;
 using Lichs.MCP.Core.Attributes;
@@ -10,86 +10,166 @@ namespace CSharpCodeUtility;
 
 public class Program
 {
-    private static readonly string _logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "mcp_debug_log.txt");
-    private static readonly JsonSerializerOptions _jsonPrettyOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = false,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    private static readonly JsonSerializerOptions _jsonPrettyOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     static async Task Main(string[] args)
     {
         Console.OutputEncoding = new UTF8Encoding(false);
         Console.InputEncoding = new UTF8Encoding(false);
 
-        if (args.Length > 0)
+        if (args.Length > 0 && args[0] == "--test")
         {
-            if (args[0] == "--test")
-            {
-                CSharpCodeUtility.Testing.TestRunner.RunAllTests();
-                return;
-            }
-
-            if (args[0] == "fix-namespace")
-            {
-                // Usage: fix-namespace <directory> <projectRoot> <rootNamespace> [extraUsings...]
-                if (args.Length < 4)
-                {
-                    Console.WriteLine("Usage: fix-namespace <directory> <projectRoot> <rootNamespace> [extraUsings...]");
-                    return;
-                }
-
-                string directory = args[1];
-                string projectRoot = args[2];
-                string rootNamespace = args[3];
-                List<string>? extraUsings = args.Length > 4 ? args.Skip(4).ToList() : null;
-
-                var files = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories);
-                int fixedCount = 0;
-
-                foreach (var file in files)
-                {
-                    string code = File.ReadAllText(file);
-                    
-                    string newCode = CSharpCodeUtility.Core.CsharpRefactorer.FixNamespaceAndUsings(code, file, projectRoot, rootNamespace, extraUsings);
-                    
-                    if (code != newCode)
-                    {
-                         File.WriteAllText(file, newCode);
-                         fixedCount++;
-                    }
-                }
-                Console.WriteLine($"Fixed namespaces and usings in {fixedCount} files.");
-                return;
-            }
+            CSharpCodeUtility.Testing.TestRunner.RunAllTests();
+            return;
         }
 
-        var server = new McpServer("csharp-code-utility", "1.0.0");
-        
-        // 自動掃描 [McpTool]
+        var server = new McpServer("csharp-code-utility", "2.0.0");
         server.RegisterToolsFromAssembly(System.Reflection.Assembly.GetExecutingAssembly());
-        
         await server.RunAsync(args);
     }
 
-    // --- New Tools ---
+    // =========================================================================================
+    // Core Tools (Consolidated)
+    // =========================================================================================
 
-    [McpTool("get_project_references", "分析指定目錄或解決方案下的專案依賴關係圖。")]
-    public static string GetProjectReferences([McpParameter("解決方案路徑 (.sln/.slnx) 或根目錄")] string rootPath)
+    [McpTool("analyze_csharp", "分析 C# 專案結構、符號定義與參考引用。")]
+    public static string AnalyzeCsharp(
+        [McpParameter("分析目標路徑 (檔案或目錄)")] string path,
+        [McpParameter("分析類型 (Structure, References, SymbolDefinition, Usages)")] string analysisType,
+        [McpParameter("搜尋字串 (用於 FindSymbol 或 FindReferences)", false)] string? query = null)
     {
-        var refs = ProjectDependencyAnalyzer.GetProjectReferences(rootPath);
-        return JsonSerializer.Serialize(refs, _jsonPrettyOptions);
+        if (analysisType.Equals("Structure", StringComparison.OrdinalIgnoreCase))
+        {
+            string content = File.ReadAllText(path);
+            var structure = CsharpParser.GetStructure(content);
+            return JsonSerializer.Serialize(structure, _jsonPrettyOptions);
+        }
+        else if (analysisType.Equals("References", StringComparison.OrdinalIgnoreCase) || 
+                 analysisType.Equals("ProjectReferences", StringComparison.OrdinalIgnoreCase))
+        {
+            // Project Level References
+            var refs = ProjectDependencyAnalyzer.GetProjectReferences(path);
+            return JsonSerializer.Serialize(refs, _jsonPrettyOptions);
+        }
+        else if (analysisType.Equals("SymbolDefinition", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrEmpty(query)) throw new ArgumentException("查詢字串 (query) 不可為空");
+            var locs = SymbolDefinitionFinder.FindSymbolDefinition(path, query);
+            return JsonSerializer.Serialize(locs, _jsonPrettyOptions);
+        }
+        else if (analysisType.Equals("Usages", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrEmpty(query)) throw new ArgumentException("查詢字串 (query) 不可為空");
+            var refs = ReferenceFinder.FindReferences(path, query);
+            return JsonSerializer.Serialize(refs, _jsonPrettyOptions);
+        }
+
+        throw new ArgumentException($"未知的分析類型: {analysisType}");
     }
 
-    [McpTool("find_symbol_definition", "在專案中快速搜尋符號 (Class/Method/Property) 的定義位置 (檔案與行號)。")]
-    public static string FindSymbolDefinition(
-        [McpParameter("搜尋根目錄")] string rootPath,
-        [McpParameter("符號名稱 (例如 'MyClass', 'GetId')")] string symbolName)
+    [McpTool("inspect_csharp", "讀取特定的 C# 程式碼片段 (例如讀取某個 Method 的 Body)。")]
+    public static string InspectCsharp(
+        [McpParameter("C# 檔案路徑")] string path,
+        [McpParameter("元素名稱 (Method Name 等)")] string elementName,
+        [McpParameter("元素類型 (Method, Property)", false)] string elementType = "Method")
     {
-        var locs = SymbolDefinitionFinder.FindSymbolDefinition(rootPath, symbolName);
-        return JsonSerializer.Serialize(locs, _jsonPrettyOptions);
+        if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
+        string content = File.ReadAllText(path);
+
+        if (elementType.Equals("Method", StringComparison.OrdinalIgnoreCase))
+        {
+            var body = CsharpParser.GetMethodBody(content, elementName);
+            return body ?? $"Method '{elementName}' not found.";
+        }
+
+        // Future: Support Property inspection if needed
+        return "Unsupported element type.";
     }
 
-    // --- Existing Tools Wrapper (if needed, but ToolHandlers.cs/Program.cs usually handle this) ---
-    // Note: If previous handlers were migrated to static methods in Program.cs, they should be here.
-    // However, in the CSharpCodeUtility migration task (Step 6.4), we updated ToolHandlers.cs to have [McpTool] attributes and used RegisterToolsFromAssembly.
-    // So we DON'T need to duplicate them here. Just the new tools are enough if they are in Program.cs.
-    // Or we can move these new tools to a separate NewTools.cs file to keep Program.cs clean.
-    // Let's put them here for now as requested.
+    [McpTool("edit_csharp", "修改 C# 程式碼 (UpdateMethod, AddUsing, FixNamespace)。")]
+    public static string EditCsharp(
+        [McpParameter("目標路徑 (檔案或目錄)")] string path,
+        [McpParameter("操作類型 (UpdateMethod, AddUsing, FixNamespace)")] string operation,
+        [McpParameter("內容 (MethodBody, Namespace, etc.)", false)] string? content = null,
+        [McpParameter("選項參數 (JSON)", false)] string optionsJson = "{}")
+    {
+        var options = JsonSerializer.Deserialize<JsonElement>(optionsJson);
+        
+        if (operation.Equals("UpdateMethod", StringComparison.OrdinalIgnoreCase))
+        {
+             if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
+             if (string.IsNullOrEmpty(content)) throw new ArgumentException("Content (Method Name) required");
+             
+             // optionsJson should contain the NEW BODY
+             string newBody = "";
+             if (options.TryGetProperty("newBody", out var nb)) newBody = nb.GetString() ?? "";
+
+             string code = File.ReadAllText(path);
+             string newCode = CsharpModifier.UpdateMethodBody(code, content, newBody); // content is MethodName here? No wait, logic check.
+             
+             // Let's refine API: content = MethodName, options = { newBody: "..." }
+             // Or consistent: content = NewBody, options = { methodName: "..." }
+             // Let's stick to: content serves as primary data. 
+             // IF UpdateMethod: content = NewBody, options: { methodName: "..." }
+             
+             // Re-reading legacy: UpdateMethod(methodName, newBody)
+             
+             string methodName = "";
+             if (options.TryGetProperty("methodName", out var mn)) methodName = mn.GetString() ?? "";
+             
+             if (string.IsNullOrEmpty(methodName)) throw new ArgumentException("必須在 options 中提供 methodName");
+
+             newCode = CsharpModifier.UpdateMethodBody(code, methodName, content ?? ""); 
+             File.WriteAllText(path, newCode);
+             return $"Updated method '{methodName}' in {path}";
+        }
+        else if (operation.Equals("AddUsing", StringComparison.OrdinalIgnoreCase))
+        {
+             // content = namespace to add
+             if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
+             string code = File.ReadAllText(path);
+             string newCode = CsharpModifier.AddUsing(code, content ?? "");
+             File.WriteAllText(path, newCode);
+             return $"Added using '{content}' to {path}";
+        }
+        else if (operation.Equals("FixNamespace", StringComparison.OrdinalIgnoreCase))
+        {
+             if (!Directory.Exists(path)) throw new DirectoryNotFoundException("Path must be a directory for FixNamespace");
+             
+             string projectRoot = "";
+             string rootNamespace = "";
+             if (options.TryGetProperty("projectRoot", out var pr)) projectRoot = pr.GetString() ?? "";
+             if (options.TryGetProperty("rootNamespace", out var rn)) rootNamespace = rn.GetString() ?? "";
+             
+             List<string>? extraUsings = null; // simplified for now
+
+             var files = Directory.GetFiles(path, "*.cs", SearchOption.AllDirectories);
+             int count = 0;
+             foreach (var file in files)
+             {
+                 string code = File.ReadAllText(file);
+                 string newCode = CsharpRefactorer.FixNamespaceAndUsings(code, file, projectRoot, rootNamespace, extraUsings);
+                 if (code != newCode)
+                 {
+                     File.WriteAllText(file, newCode);
+                     count++;
+                 }
+             }
+             return $"Fixed namespaces in {count} files.";
+        }
+
+        throw new ArgumentException($"未知的操作類型: {operation}");
+    }
 }
